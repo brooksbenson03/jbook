@@ -1,56 +1,34 @@
 import * as esbuild from 'esbuild-wasm'
 import axios from 'axios'
+import localForage from 'localforage'
 
-export const unpkgPathPlugin = () => {
+const fileCache = localForage.createInstance({
+  name: 'filecache'
+})
+
+export const unpkgPathPlugin = (contents: string) => {
   return {
     name: 'unpkg-path-plugin',
     setup(build: esbuild.PluginBuild) {
-      // filters are executed against file names
-      build.onResolve({ filter: /.*/ }, async (args: any) => {
-        // executes first
-        console.log('onResolve', args)
-        if (args.path === 'index.js') {
-          return { path: args.path, namespace: 'a' }
-        }
+      // handle root entry file of index.js
+      build.onResolve({ filter: /^index\.js$/ }, (args: any) => {
+        return { path: args.path, namespace: 'a' }
+      })
 
-        // relative file resolution
-        if (args.path.includes('./') || args.path.includes('../')) {
-          return {
-            namespace: 'a',
-            path: new URL(
-              args.path,
-              'https://unpkg.com' + args.resolveDir + '/'
-            ).href
-          }
-        }
-
+      // handle relative paths of a module
+      build.onResolve({ filter: /^\.+\// }, (args: any) => {
         return {
           namespace: 'a',
-          path: `https://unpkg.com/${args.path}`
+          path: new URL(args.path, 'https://unpkg.com' + args.resolveDir + '/')
+            .href
         }
       })
 
-      build.onLoad({ filter: /.*/ }, async (args: any) => {
-        // executes second
-        console.log('onLoad', args)
-
-        if (args.path === 'index.js') {
-          // if contents contain an import, repeat steps onResolve, onLoad
-          return {
-            loader: 'jsx', // contents is the file contents
-            contents: ` 
-              const message = require('nested-test-pkg'); 
-              console.log(message);
-            `
-          }
-        }
-
-        const { data, request } = await axios.get(args.path)
-
+      // handle main file of a module
+      build.onResolve({ filter: /.*/ }, async (args: any) => {
         return {
-          loader: 'jsx',
-          contents: data,
-          resolveDir: new URL('./', request.responseURL).pathname
+          namespace: 'a',
+          path: `https://unpkg.com/${args.path}`
         }
       })
     }
