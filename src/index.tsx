@@ -28,8 +28,8 @@ const App = () => {
         write: false,
         plugins: [unpkgPathPlugin()]
       })
-      console.log(res)
-      setCode(res.code)
+      const code = res.outputFiles[0].text
+      setCode(code)
     }
   }
 
