@@ -2,6 +2,7 @@ import * as esbuild from 'esbuild-wasm'
 import ReactDOM from 'react-dom'
 import { useState, useEffect, useRef } from 'react'
 import { unpkgPathPlugin } from './plugins/unpkg-path-plugin'
+import { fetchPlugin } from './plugins/fetch-plugin'
 
 const App = () => {
   const builder = useRef<any>()
@@ -11,7 +12,7 @@ const App = () => {
   const createBuilder = async () => {
     builder.current = await esbuild.startService({
       worker: true,
-      wasmURL: '/esbuild.wasm'
+      wasmURL: 'https://unpkg.com/esbuild-wasm@0.8.27/esbuild.wasm'
     })
   }
 
@@ -26,7 +27,7 @@ const App = () => {
         entryPoints: ['index.js'],
         bundle: true,
         write: false,
-        plugins: [unpkgPathPlugin(input)],
+        plugins: [unpkgPathPlugin(), fetchPlugin(input)],
         define: {
           'process.env.NODE_ENV': '"production"',
           global: 'window'
@@ -47,6 +48,7 @@ const App = () => {
         <button onClick={onClick}>Submit</button>
       </div>
       <pre>{code}</pre>
+      <iframe src="/test.html" sandbox=""></iframe>
     </div>
   )
 }
