@@ -6,8 +6,8 @@ import { fetchPlugin } from './plugins/fetch-plugin'
 
 const App = () => {
   const builder = useRef<any>()
+  const iframe = useRef<any>()
   const [input, setInput] = useState<any>()
-  const [code, setCode] = useState('')
 
   const createBuilder = async () => {
     builder.current = await esbuild.startService({
@@ -22,21 +22,42 @@ const App = () => {
 
   const onClick = async () => {
     if (!builder.current) return
-    else {
-      const res = await builder.current.build({
-        entryPoints: ['index.js'],
-        bundle: true,
-        write: false,
-        plugins: [unpkgPathPlugin(), fetchPlugin(input)],
-        define: {
-          'process.env.NODE_ENV': '"production"',
-          global: 'window'
-        }
-      })
-      const code = res.outputFiles[0].text
-      setCode(code)
-    }
+
+    iframe.current.srcDoc = html
+
+    const res = await builder.current.build({
+      entryPoints: ['index.js'],
+      bundle: true,
+      write: false,
+      plugins: [unpkgPathPlugin(), fetchPlugin(input)],
+      define: {
+        'process.env.NODE_ENV': '"production"',
+        global: 'window'
+      }
+    })
+
+    iframe.current.contentWindow.postMessage(res.outputFiles[0].text, '*')
   }
+
+  const html = `
+    <html>
+      <head></head>
+      <body>
+        <div id="root"></div>
+        <script>
+          const executeScript = event => {
+            try {
+              eval(event.data)
+            } catch (e) {
+              const root = document.querySelector('#root')
+              root.innerHTML = '<div>' + e + '</div>'
+            }
+          }
+          window.addEventListener('message', executeScript)
+        </script>
+      </body>
+    </html>
+  `
 
   return (
     <div>
@@ -44,11 +65,14 @@ const App = () => {
         value={input}
         onChange={(e) => setInput(e.target.value)}
       ></textarea>
-      <div>
-        <button onClick={onClick}>Submit</button>
-      </div>
-      <pre>{code}</pre>
-      <iframe src="/test.html" sandbox=""></iframe>
+      <div />
+      <button onClick={onClick}>Submit</button>
+      <iframe
+        title="preview"
+        ref={iframe}
+        srcDoc={html}
+        sandbox="allow-scripts"
+      ></iframe>
     </div>
   )
 }
