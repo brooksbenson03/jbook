@@ -66,7 +66,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
       </button>
       <MonacoEditor
         editorDidMount={onEditorDidMount}
-        height="500px"
+        height="100%"
         language="javascript"
         theme="dark"
         options={{
